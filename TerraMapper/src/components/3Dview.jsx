@@ -11,11 +11,13 @@ const ThreeD_view =(props)=>{
     const [mappedValues_Y, setMappedValues_Y] = useState([])
     const [mappedValues_Z, setMappedValues_Z] = useState([])
     const TextureRef = useRef(new THREE.TextureLoader().load('../textures/placeHolder.jpg' ))
+    
 
     const [X_UVs, set_X_UVs] = useState([])
     const [Y_UVs, set_Y_UVs] = useState([])
-
-    const [geom, setGeom] = useState(null)
+    //const [geom, setGeom] = useState(null)
+    const [mat, setMat] = useState(null)
+    
 
     const modelRef = useRef(null)
     const renderer = useRef(null)
@@ -25,6 +27,7 @@ const ThreeD_view =(props)=>{
     const orbitControl = useRef(null)
     const UV_vals = useRef(null)
     const textureMessage = useRef(' ')
+    
 
     
 
@@ -52,7 +55,7 @@ const ThreeD_view =(props)=>{
         renderer.current =  new THREE.WebGLRenderer({ alpha: true })
         renderer.current.setClearColor( 0xffffff, 0.1 )
         renderer.current.shadowMap.enabled = true;
-        renderer.current.shadowMap.type = THREE.PCFSoftShadowMap 
+        renderer.current.shadowMap.type = THREE.PCFSoftShadowMap
         renderer.current.setSize( window.innerWidth, window.innerHeight );
 
         const domStyle = renderer.current.domElement.style
@@ -238,14 +241,16 @@ const ThreeD_view =(props)=>{
             material2.flatShading = false
             material2.castShadow = true
             material2.receiveShadow = true
-           
 
+            
+           
             const mesh = new THREE.Mesh( geometry, material2 );
 
             mesh.geometry.computeVertexNormals()
 
             mesh.castShadow = true;
             mesh.receiveShadow = true;
+        
 
             var geom= mesh.geometry
             geom.computeBoundingSphere()
@@ -265,6 +270,16 @@ const ThreeD_view =(props)=>{
         if (props.FitToScreen){
             FitToScreen()
             props.ThreeDfitToScreen()
+        }
+    })
+
+    useEffect(()=>{
+        if (props.ChangeShadow){
+            console.log(modelRef.current.material.flatShading)
+           var Shading = modelRef.current.material.flatShading ? false : true
+           modelRef.current.material.flatShading = Shading  
+           modelRef.current.material.needsUpdate = true
+           props.ChangeShadowFunc()
         }
     })
 

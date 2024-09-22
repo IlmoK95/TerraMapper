@@ -70,6 +70,8 @@ const Map = ( props ) => {
     const [showCreateMod, setShowCreateMod] = useState(false)
     const [ThreeDReady, setThreeDReady] = useState(false)
     const [ShowDownloads, setShowDownloads] = useState(false)
+    const [ChangeShadow, setChangeShadow] = useState(false)
+
 
 
 
@@ -185,10 +187,9 @@ const Map = ( props ) => {
 
     const getElevationData=()=>{
 
-      
+      setPendingStatus(true)
       wgsCoords.current = []
       APIelevations.current = []
-      setPendingStatus(true)
       setWgsCoords([{data : 'pending data...'}])
   
       if (coordinatesList.current) {
@@ -807,9 +808,9 @@ const screen_XY =(event)=>{
 
 
 
+
   const CalcPointAmount =()=>{
 
-    SetTexture_Size(rectHeight.current, rectWidth.current)
 
     rectHeight.current = BottomRightCorner.current.y - TopLeftCorner.current.y 
     rectWidth.current = BottomRightCorner.current.x - TopLeftCorner.current.x
@@ -821,8 +822,6 @@ const screen_XY =(event)=>{
     let h =  DirectDistance(BottomRightCoord.lat, TopLeftCoord.lat)
     let w =  h * (rectWidth.current / rectHeight.current)
 
-    
-    
     let Y_limit = h / Resref.current
     let X_limit = w / Resref.current
 
@@ -875,6 +874,13 @@ const screen_XY =(event)=>{
 
 
 
+  const SetMeasurements=(h, w)=>{
+    setHeight(h)
+    setWidth(w)
+  }
+
+
+
   const SetLngLat=()=>{
 
     setThreeDReady(false)
@@ -890,6 +896,18 @@ const screen_XY =(event)=>{
 
      SetTopLeft(TopLeftCoord)
      SetBottomRight(BottomRightCoord)
+
+     let texture_h = BottomRightCorner.current.y - TopLeftCorner.current.y 
+     let texture_w = BottomRightCorner.current.x - TopLeftCorner.current.x
+
+     SetTexture_Size(texture_h, texture_w)
+
+     let model_h =  DirectDistance(BottomRightCoord.lat, TopLeftCoord.lat)
+     let model_w =  model_h * (rectWidth.current / rectHeight.current)
+
+     SetMeasurements(model_h, model_w)
+
+     
 
      let grid_X_axises = []
      let grid_Y_axises = []
@@ -1028,8 +1046,7 @@ const setNewMessage=(message)=>{
 
         directX.current = w
         directY.current = h
-
-        SetMeasurements()
+ 
       }
 
     } 
@@ -1042,12 +1059,6 @@ const setNewMessage=(message)=>{
     }
 
 
-    const SetMeasurements=()=>{
-
-      setHeight(directY.current)
-      setWidth(directX.current)
-
-    }
 
     const set_Resolution=(e)=>{
 
@@ -1061,6 +1072,12 @@ const setNewMessage=(message)=>{
 
     const ThreeDfitToScreen=()=>{
       SetFitToScreen(!fitToScreen)
+    }
+
+
+    const ChangeShadowFunc=()=>{
+      setChangeShadow(!ChangeShadow)
+
     }
 
     
@@ -1216,7 +1233,9 @@ const setNewMessage=(message)=>{
 
               <ThreeDoptionButtons
                             ThreeDfitToScreen = {ThreeDfitToScreen}
-                            buttonStyle  = {ThreeDoptionButtonStyle}>
+                            buttonStyle  = {ThreeDoptionButtonStyle}
+                            ChangeShadow = {ChangeShadow}
+                            ChangeShadowFunc = {ChangeShadowFunc}>                        
               </ThreeDoptionButtons>
 
           </div>
@@ -1251,7 +1270,10 @@ const setNewMessage=(message)=>{
                         ThreeDfitToScreen = {ThreeDfitToScreen}
                         orientation = {Orientation}
                         setThreeDReady  ={setThreeDReady}
-                         >
+                        ChangeShadow = {ChangeShadow}
+                        ChangeShadowFunc = {ChangeShadowFunc}> 
+                        
+                      
             </ThreeD_view></div>
       </div>
       )
