@@ -3,23 +3,14 @@ import Delaunator from 'delaunator'
 import * as THREE from 'three'
 import textureService from '../sources/GETtexture'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
 
 const ThreeD_view =(props)=>{
 
-    const [mappedValues_X, setMappedValues_X] = useState([])
-    const [mappedValues_Y, setMappedValues_Y] = useState([])
-    const [mappedValues_Z, setMappedValues_Z] = useState([])
     const TextureRef = useRef(new THREE.TextureLoader().load('../textures/placeHolder.jpg' ))
-    
-
-    const [X_UVs, set_X_UVs] = useState([])
-    const [Y_UVs, set_Y_UVs] = useState([])
-    //const [geom, setGeom] = useState(null)
-    const [mat, setMat] = useState(null)
-    
-
     const modelRef = useRef(null)
+    const ResRef = useRef(null)
     const renderer = useRef(null)
     const camera = useRef(null)
     const scene = useRef(null)
@@ -27,6 +18,10 @@ const ThreeD_view =(props)=>{
     const orbitControl = useRef(null)
     const UV_vals = useRef(null)
     const textureMessage = useRef(' ')
+    const bufferGeometry = useRef(null)
+    const vertexAmount = useRef(null)
+
+    const [res, setRes] = useState(null)
     
 
     
@@ -39,7 +34,6 @@ const ThreeD_view =(props)=>{
         scene.current = new THREE.Scene();
         const Ambientlight = new THREE.AmbientLight( 0x404040, 12 );
         scene.current.add( Ambientlight )
-        //scene.current.fog = new THREE.Fog( 0xcccccc, 15000, 20000 );
 
         const axesHelper = new THREE.AxesHelper( 1000000);
         scene.current.add( axesHelper )
@@ -95,6 +89,9 @@ const ThreeD_view =(props)=>{
         if(props.NewMod){
             
             props.showNewModFunc()
+            setRes(props.modRes)
+            
+            
 
             let X_vals = []
             let Y_vals = []
@@ -139,12 +136,6 @@ const ThreeD_view =(props)=>{
                 return MapToRangePercentage(val, X_min, X_max, 0, props.dimensionX)
             }) 
 
-            setMappedValues_X(X_vals)
-            setMappedValues_Y(Y_vals)
-            setMappedValues_Z(Z_vals)
-
-            set_X_UVs(X_vals_UV)
-            set_Y_UVs(Y_vals_UV)
 
             getTexture(X_vals, Y_vals, Z_vals, X_vals_UV, Y_vals_UV)
             
@@ -153,13 +144,13 @@ const ThreeD_view =(props)=>{
     })
 
 
-    function MapToRange(val, sourceMin, sourceMax, targetMin, targetMax){
+    const MapToRange=(val, sourceMin, sourceMax, targetMin, targetMax)=>{
 
         return targetMin + (val - sourceMin)/ (sourceMax - sourceMin) * (targetMax - targetMin) * 1000
 
     }
 
-    function MapToRangePercentage(val, sourceMin, sourceMax, targetMin, targetMax){
+    const MapToRangePercentage=(val, sourceMin, sourceMax, targetMin, targetMax)=>{
         
 
         return (targetMin + (val - sourceMin) / (sourceMax - sourceMin) * (targetMax - targetMin)) / targetMax
@@ -167,7 +158,7 @@ const ThreeD_view =(props)=>{
     }
 
 
-    function getTexture(X_vals, Y_vals, Z_vals, X_vals_UV, Y_vals_UV){
+    const getTexture=(X_vals, Y_vals, Z_vals, X_vals_UV, Y_vals_UV)=>{
 
         props.setTexture(null)
         textureService
@@ -185,8 +176,6 @@ const ThreeD_view =(props)=>{
                         textureMessage.current = `❌ Loading texture file failed: ${error.message}`
                         TextureRef.current = new THREE.TextureLoader().load('../textures/placeHolder.jpg' ) 
 
-
-
                     }).finally(
                         ()=>{
 
@@ -196,7 +185,7 @@ const ThreeD_view =(props)=>{
     }
 
 
-    function CreateMesh(X, Y, Z, X_uv, Y_uv){
+    const CreateMesh = (X, Y, Z, X_uv, Y_uv) =>{
 
             const coordsForDelanay = []
             const vertices = [] 
@@ -231,27 +220,22 @@ const ThreeD_view =(props)=>{
                 uvAttribute.setXY(i, uv.x, uv.y)
             })
 
+            bufferGeometry.current = geometry
 
             const material2 = new THREE.MeshStandardMaterial({
                 map: TextureRef.current,
   
             });
             material2.side = THREE.DoubleSide
-       
             material2.flatShading = false
             material2.castShadow = true
             material2.receiveShadow = true
 
-            
-           
-            const mesh = new THREE.Mesh( geometry, material2 );
-
+            const mesh = new THREE.Mesh( bufferGeometry.current, material2 );
             mesh.geometry.computeVertexNormals()
-
             mesh.castShadow = true;
             mesh.receiveShadow = true;
         
-
             var geom= mesh.geometry
             geom.computeBoundingSphere()
             const v = new THREE.Vector3( -geom.boundingSphere.center.x, -geom.boundingSphere.center.y, 0 )
@@ -274,14 +258,15 @@ const ThreeD_view =(props)=>{
     })
 
     useEffect(()=>{
-        if (props.ChangeShadow){
-            console.log(modelRef.current.material.flatShading)
-           var Shading = modelRef.current.material.flatShading ? false : true
-           modelRef.current.material.flatShading = Shading  
-           modelRef.current.material.needsUpdate = true
-           props.ChangeShadowFunc()
+        if(modelRef.current){
+            var Shading = props.ModType==='.obj' ? true : false
+            var texture = props.ModType==='.obj' ? null : TextureRef.current
+            modelRef.current.material.flatShading = Shading
+            modelRef.current.material.map = texture
+            modelRef.current.material.needsUpdate = true
         }
-    })
+             
+    },[props.ModType])
 
 
 
@@ -309,12 +294,32 @@ const ThreeD_view =(props)=>{
     }
 
     useEffect(()=>{
+        if(bufferGeometry.current){
+
+            var memoryUsage
+            var bytes = BufferGeometryUtils.estimateBytesUsed(bufferGeometry.current)
+
+            if (bytes < 1000){
+                memoryUsage = `${bytes} b`
+            }else if (bytes >= 1000 && bytes < 1000000){
+                memoryUsage = `~${Math.floor(bytes * 0.01)} kb`
+            }else {
+                memoryUsage = `~${Math.floor(bytes * 0.00001)} mb`
+            }
+
+            props.setMemUsed(memoryUsage)
+            props.setModRes(res)
+            props.setModPointAmount(`${bufferGeometry.current.getAttribute('position').count}`)
+            
+        }
+  
+    }, [bufferGeometry.current, res])
+
+
+    useEffect(()=>{
         window.addEventListener('resize', resize3DView) 
         return ()=> window.removeEventListener('resize', resize3DView)
     })
-
-
-
 
     return (
         <div ></div>

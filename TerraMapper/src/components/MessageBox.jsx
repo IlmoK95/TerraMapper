@@ -6,10 +6,8 @@ const MessageBox =(props)=>{
 
    const [showMessage, setShowMessage] = useState(false)
 
-
-
    useEffect(()=>{
-    if((props.message && props.pending===false) ){
+    if((props.message && props.pending===false)){
         setShowMessage(true)
         setTimeout(() => {
             setShowMessage(false)
@@ -26,9 +24,7 @@ const MessageBox =(props)=>{
     return (
     <div style = {{ display : showMessage? 'block' : 'none'}}>
         <div style = {props.layoutStyle} >     
-      
                 <span>{props.message}</span>  
-
         </div>
     </div>
     )

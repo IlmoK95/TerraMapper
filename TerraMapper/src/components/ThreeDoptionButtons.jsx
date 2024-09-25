@@ -1,18 +1,13 @@
-import { useState } from 'react';
-
 const ThreeDoptionButtons =(props)=>{
-    const [pressed, setPressed] = useState(false)
-
-    const ChangeShadowPressed=()=>{
-        setPressed(!pressed)
-        props.ChangeShadowFunc()
-
-    }
 
     return (
-        <div>
-            <button style = {props.buttonStyle} onClick={props.ThreeDfitToScreen}>zoom to fit</button> 
-            <button style = {props.buttonStyle} onClick={ChangeShadowPressed}>{pressed ? 'soft shadow' : 'flat shadow' }</button> 
+        <div >
+            <div>
+                <button style = {props.buttonStyle} onClick={props.ThreeDfitToScreen}>zoom to fit</button> 
+                <button style = {props.buttonStyle} onClick={props.ChangeModType}>{props.ModType==='.obj' ? 'refined view' : '.obj view' }</button>
+                <button style = {props.buttonStyle} onClick={props.showThreeDinfoFunc}>{props.showThreeDinfo ? 'hide info' : 'show info' }</button> 
+            </div>
+             
         </div>
     )
 }

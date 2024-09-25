@@ -4,10 +4,11 @@ import SetDataComp from './components/CreateModelComp';
 import ElevationService from './sources/elevations'
 import MsgBox from './components/MessageBox';
 import Download from './components/DownloadComp';
-import ThreeD_view from './components/3Dview';
+import ThreeDview from './components/3Dview';
 import VisibilityButton from './components/VisibilityButton';
 import MapOptionButtons from './components/MapOptionButtons';
 import ThreeDoptionButtons from './components/ThreeDoptionButtons';
+import ThreeDinfo from './components/3DInfo';
 import './index.css';
 
 
@@ -18,7 +19,6 @@ const Map = ( props ) => {
     const rightMid = useRef()
     const resMax = useRef(0.09)
     const resAbsMax = useRef(0.09)
-   // const pendingRef = useRef(false)
     const mapRef = useRef(null);
     const map = useRef(null);
     const ThreeDRef = useRef(null);
@@ -29,7 +29,6 @@ const Map = ( props ) => {
     const wgsCoords = useRef([])
     const recRef = useRef(null);
     const outlineRef = useRef(null)
-    const rasterTileService = useRef(null)
     const platform = useRef(null)
     const { apikey } = props;
     const coordinatesList = useRef([])
@@ -70,9 +69,13 @@ const Map = ( props ) => {
     const [showCreateMod, setShowCreateMod] = useState(false)
     const [ThreeDReady, setThreeDReady] = useState(false)
     const [ShowDownloads, setShowDownloads] = useState(false)
-    const [ChangeShadow, setChangeShadow] = useState(false)
-
-
+    const [ModType, setModType] = useState('detailed')
+    const [invalidMes, SetInvalidMes] = useState(false)
+    const [invalidPoints, SetInvalidPoints] = useState(false)
+    const [showThreeDinfo, setShowThreeDinfo] = useState(false)
+    const [modPointAmount, setModPointAmount] = useState(null)
+    const [modRes, setModRes] = useState(null)
+    const [memUsed, setMemUsed] = useState(null)
 
 
     const OptionButtonStyle = {flex: '1',
@@ -80,8 +83,9 @@ const Map = ( props ) => {
       boxSizing: 'border-box'}
 
     const buttonStyle = { marginLeft:'10px', marginTop:'10px', fontSize: '20px', zIndex:'2', borderColor:'red', borderWidth: '5px', borderRadius: '10px' }
-    const mapOptionButtonStyle = {padding:'7px', marginLeft:'10px', marginTop:'10px', fontSize: '20px', display: show3D?"none":"block", borderRadius: '10px' }
-    const ThreeDoptionButtonStyle = {padding:'7px', marginLeft:'10px', marginTop:'10px', fontSize: '20px', display: show3D?"block":"none", borderRadius: '10px' }
+    const mapOptionButtonStyle = {padding:'7px', marginLeft:'10px', marginTop:'10px', fontSize: '15px', display: show3D?"none":"block", borderRadius: '10px' }
+    const ThreeDinfoBubble = { flexWrap: 'wrap', background : 'white',marginTop: '10px', borderRadius:'20px 5px 5px 20px', height : 'fit-content', width : 'fit-content', padding : '2px 10px 2px 10px', fontSize: '15px', display: show3D && showThreeDinfo ?"flex":"none"}
+    const ThreeDoptionButtonStyle = {padding:'7px', marginLeft:'10px', marginTop:'10px', fontSize: '15px', display: show3D?"block":"none", borderRadius: '10px' }
     const OptionTableView = {backgroundColor : 'white', borderRadius : '20px', margin:'auto', width : Orientation==='horizontal'? '20vw' : 'auto',  height : Orientation==='horizontal'? '100vh' : 'auto', padding : '15px'  }
     const MessageBoxStyle = {position:'fixed', top:'5vh', left: Orientation==='horizontal'? '35vw' : '0vw', width: '20vw', zIndex: "100", fontSize:'20px', backgroundColor : 'white', borderRadius : '20px', padding: '10px'}
 
@@ -111,10 +115,6 @@ const Map = ( props ) => {
             engineType: engineType
         });
 
-        console.log(defaultLayers)
-
-        
-
         setLayers(defaultLayers)
 
         const newMap = new H.Map(
@@ -129,32 +129,6 @@ const Map = ( props ) => {
                   }
           });
           
-      
-          /* rasterTileService.current = platform.current.getRasterTileService({
-            queryParams: {
-              style: "satellite.day",
-              //size: 600
-            },
-          }); */
-
-
-          /* const rasterTileProvider = new H.service.rasterTile.Provider(
-            rasterTileService.current
-          ); */
-  
-          //const rasterTileLayer = new H.map.layer.TileLayer(rasterTileProvider);
-
-          
-     
-          /* const newMap = new H.Map(mapRef.current, rasterTileLayer, {
-            pixelRatio: window.devicePixelRatio,
-            center: {
-              lat: 51.144,
-              lng: 20.94,
-            },
-            zoom: 5,
-          }); */
- 
           const behavior = new H.mapevents.Behavior(
             new H.mapevents.MapEvents(newMap)
           )
@@ -163,7 +137,6 @@ const Map = ( props ) => {
           markerRef.current = new H.map.Group();
           map.current.addObject(markerRef.current)
           behaviorRef.current.disable(H.mapevents.Behavior.Feature.TILT | H.mapevents.Behavior.Feature.HEADING)
-          //setLayers(platform.current.createDefaultLayers())
           createResizableRect()
         }
   
@@ -358,7 +331,7 @@ function createResizableRect() {
       // event listener for rectangle group to hide outline if moved out with mouse (or released finger on touch devices)
       // the outline is hidden on touch devices after specific timeout
       rectGroup.addEventListener('pointerleave', function(event) {
-        console.log(event)
+
         var currentStyle = rectOutline.getStyle(),
             newStyle = currentStyle.getCopy({
               strokeColor: 'rgba(255, 0, 0, 0.5)',
@@ -379,6 +352,9 @@ function createResizableRect() {
       rectGroup.addEventListener('pointermove', function(event) {
      
         let [X, Y] = screen_XY(event)
+        if(!X || !Y){
+          return
+        }
         var  objectTopLeftScreen = map.current.geoToScreen(event.target.getGeometry().getBoundingBox().getTopLeft()),
             objectBottomRightScreen = map.current.geoToScreen(event.target.getGeometry().getBoundingBox().getBottomRight()),
             draggingType = ''
@@ -425,7 +401,6 @@ function createResizableRect() {
         }
     
         rectGroup.setData({'draggingType': draggingType});
-        console.log(draggingType)
       }, true);
 
 
@@ -436,6 +411,9 @@ function createResizableRect() {
 
      
         let [X, Y] = screen_XY(event)
+        if(!X || !Y){
+          return
+        }
         var  objectTopLeftScreen = map.current.geoToScreen(event.target.getGeometry().getBoundingBox().getTopLeft()),
             objectBottomRightScreen = map.current.geoToScreen(event.target.getGeometry().getBoundingBox().getBottomRight()),
             draggingType = ''
@@ -491,8 +469,10 @@ function createResizableRect() {
       // when we try to set rect size to 0 or negative and mouse cursor leaves the map object
       rectGroup.addEventListener('dragstart', function(event) {
 
-        console.log(event.touches)
         let [X, Y] = screen_XY(event)
+        if(!X || !Y){
+          return
+        }
         if (event.target === rect) {
 
           var object = rect
@@ -511,20 +491,26 @@ function createResizableRect() {
       // event listener for rect group to resize the geo rect object if dragging over outline polyline
       rectGroup.addEventListener('drag', function(event) {
 
-       let [X, Y] = screen_XY(event)
+      let [X, Y] = screen_XY(event)
+      if(!X || !Y){
+        return
+      }
   
-           var pointerGeoPoint = map.current.screenToGeo(X, Y);
-           var  currentGeoRect = rect.getGeometry().getBoundingBox(),
-            objectTopLeftScreen = map.current.geoToScreen(currentGeoRect.getTopLeft()),
-            objectBottomRightScreen = map.current.geoToScreen(currentGeoRect.getBottomRight());
+      var pointerGeoPoint = map.current.screenToGeo(X, Y);
+      var  currentGeoRect = rect.getGeometry().getBoundingBox(),
+      objectTopLeftScreen = map.current.geoToScreen(currentGeoRect.getTopLeft()),
+      objectBottomRightScreen = map.current.geoToScreen(currentGeoRect.getBottomRight());
         
-        if (event.target === rect){
-          let [X, Y] = screen_XY(event)
+      if (event.target === rect){
+        let [X, Y] = screen_XY(event)
+        if(!X || !Y){
+            return
+        }
 
 
-          var object = event.target,
-          startCoord = object.getData()['startCoord'],
-          newCoord = map.current.screenToGeo(X, Y);
+        var object = event.target,
+        startCoord = object.getData()['startCoord'],
+        newCoord = map.current.screenToGeo(X, Y);
   
       // create new Rect with updated coordinates
       if (!newCoord.equals(startCoord)) {
@@ -539,8 +525,6 @@ function createResizableRect() {
           if (newTop >= 90 || newBottom <= -90) {
             return;
           }
-
-          console.log(event)
   
           object.setBoundingBox(newGeoRect);
           outlineLinestring = rect.getGeometry().getExterior();
@@ -758,13 +742,21 @@ const screen_XY =(event)=>{
     rectHeight.current = BottomRightCorner.current.y - TopLeftCorner.current.y 
     rectWidth.current = BottomRightCorner.current.x - TopLeftCorner.current.x
 
+    
+
     let BottomRightCoord = map.current.screenToGeo(BottomRightCorner.current.x , BottomRightCorner.current.y)
     let TopLeftCoord = map.current.screenToGeo(TopLeftCorner.current.x , TopLeftCorner.current.y )
 
     let h =  DirectDistance(BottomRightCoord.lat, TopLeftCoord.lat)
     let w =  h * (rectWidth.current / rectHeight.current)
 
-    let A_limit = 50000 /  ((1 / resAbsMax.current)*(1 / resAbsMax.current) )
+    SetInvalidMes(false)
+    if(w <= 0 || h<= 0 || isNaN(h) || isNaN(h)){
+      SetInvalidMes(true) 
+      setNewMessage([`❌ Invalid dimensions : h = ${isNaN(h)? h : Math.floor(h)}, w = ${isNaN(w)? w : Math.floor(w)} km`]) 
+    }
+
+    let A_limit = 50000 /  Math.pow(1 / resAbsMax.current, 2 )
     let A = h * w
     let rezNew
 
@@ -841,7 +833,11 @@ const screen_XY =(event)=>{
 
     let pointAmount = columns * rows - 1
     setPointAmount(pointAmount)
-
+    SetInvalidPoints(false)
+    if (pointAmount <= 0){
+      SetInvalidPoints(true)
+      setNewMessage([`❌ Invalid point amount: ${pointAmount}`])
+    }
 
     getDistances(TopLeftCorner.current, BottomRightCorner.current)
 
@@ -879,11 +875,10 @@ const screen_XY =(event)=>{
     setWidth(w)
   }
 
-
-
   const SetLngLat=()=>{
 
-    setThreeDReady(false)
+      setThreeDReady(false)
+      setModRes(Resref.current)
 
       while (coordinatesList.current.length > 0) {
         coordinatesList.current.pop();
@@ -906,8 +901,6 @@ const screen_XY =(event)=>{
      let model_w =  model_h * (rectWidth.current / rectHeight.current)
 
      SetMeasurements(model_h, model_w)
-
-     
 
      let grid_X_axises = []
      let grid_Y_axises = []
@@ -967,7 +960,6 @@ const screen_XY =(event)=>{
 
       getElevationData()
 
-
     }
 
 const setNewMessage=(message)=>{
@@ -979,12 +971,11 @@ const setNewMessage=(message)=>{
 
 
 
-    const setMeasurementMarkers=()=>{
+const setMeasurementMarkers=()=>{
 
       markerRef.current.forEach(element => {
         markerRef.current.removeObject(element)
       })
-  
 
       var height = document.createElement('div')
       height.style.backgroundColor = 'white'
@@ -995,7 +986,6 @@ const setNewMessage=(message)=>{
       width.style.backgroundColor = 'white'
       width.style.borderRadius = '5px'
       width.innerHTML = Math.floor(directX.current)+'km'
-      
 
       var heightIcon = new H.map.DomIcon(height)
       var heightMarker = new H.map.DomMarker(rightMid.current , {icon: heightIcon})
@@ -1021,8 +1011,7 @@ const setNewMessage=(message)=>{
       centerXY.y = centerXY.y - (imgDims / 2)
 
       let MidCoord = map.current.screenToGeo(centerXY.x , centerXY.y)
-  
-  
+
       var centerIcon = new H.map.DomIcon(image)
       var CenterMarker = new H.map.DomMarker(MidCoord, {icon: centerIcon})
       CenterMarker.draggable = true
@@ -1031,7 +1020,7 @@ const setNewMessage=(message)=>{
       markerRef.current.addObject(heightMarker)
       markerRef.current.addObject(CenterMarker)
 
-    }
+}
 
     const getDistances=(TopLeft, BottomRight)=>{
       
@@ -1054,8 +1043,6 @@ const setNewMessage=(message)=>{
 
     const showNewMod =()=>{
       setShowNewMod(!newMod)
-
-
     }
 
 
@@ -1075,9 +1062,12 @@ const setNewMessage=(message)=>{
     }
 
 
-    const ChangeShadowFunc=()=>{
-      setChangeShadow(!ChangeShadow)
-
+    const ChangeModTypeFunc=()=>{
+      if(ModType==='detailed'){
+        setModType('.obj')
+      }else{
+        setModType('detailed')
+      }  
     }
 
     
@@ -1136,6 +1126,10 @@ const setNewMessage=(message)=>{
       setShowCreateMod(false)
     }
 
+    const show3DinfoFunc =()=>{
+      setShowThreeDinfo(!showThreeDinfo)
+    }
+
     const CreateModelOption=()=>{
       setShowCreateMod(!showCreateMod)
       setShowDownloads(false)
@@ -1143,29 +1137,35 @@ const setNewMessage=(message)=>{
     }
 
 
-    const Downloads=()=>{
-      return (
-      
-        <div style={{size:'100% 100%', display: ShowDownloads?'block' : 'none'}}>
-            <Download 
-                texture={TextureFile} 
-                getDate = {getDate} 
-                setMessage={setNewMessage} 
-                TopoMod  ={TopoMod} 
-                Coords = {Coords} 
-                pending = {pending} 
-                ref = {wgsCoords}
-                buttonStyle = {buttonStyle}
-                backgroundStyle = {OptionTableView}>
-          </Download>
-        </div> )
-    }
 
-    const createModel=()=>{
-      return (
-        <div style={{size:'100% 100%', display: showCreateMod?'block' : 'none'}}>
+    return (
+      <div style={ { width: "100vw", height: "100wh", display: 'flex', flexWrap: 'wrap', userSelect : 'none', WebkitUserSelect: 'none' } }>
+        <div style={ { display: 'flex', flexWrap: 'wrap', flexDirection : Orientation==='horizontal' ? 'row' : 'column-reverse' }}>
+          <div style={ Orientation==='horizontal'? Map_Layout_Horizontal : Map_Layout_Vertical }>
+            <div style={{position:'relative', height: '100%', display:'flex', flexDirection:  Orientation==='horizontal' ? 'column' : 'row'  }}>
+
+              <button onClick={CreateModelOption} style={OptionButtonStyle}>Create model</button>
+              <button onClick={DownloadsOption} style={OptionButtonStyle}>Download </button>
+
+            </div>
+            <div style={{size:'100% 100%', display: ShowDownloads?'block' : 'none'}}>
+              <Download 
+                    texture={TextureFile} 
+                    getDate = {getDate} 
+                    setMessage={setNewMessage} 
+                    TopoMod  ={TopoMod} 
+                    Coords = {Coords} 
+                    pending = {pending} 
+                    ref = {wgsCoords}
+                    buttonStyle = {buttonStyle}
+                    backgroundStyle = {OptionTableView}>
+              </Download>
+            </div>
+            <div style={{size:'100% 100%', display: showCreateMod?'block' : 'none'}}>
               <SetDataComp 
-                        pointAmount  ={pointAmount} 
+                        invalidMes  = {invalidMes}
+                        invalidPoints  = {invalidPoints}
+                        pointAmount  = {pointAmount} 
                         currentMax = {currentMax} 
                         res  = {res} 
                         show3D = {show3D} 
@@ -1181,26 +1181,6 @@ const setNewMessage=(message)=>{
                         >
               </SetDataComp>
             </div>
-      )
-
-    }
-
-
-    return (
-      <div style={ { width: "100vw", height: "100wh", display: 'flex', flexWrap: 'wrap', userSelect : 'none', WebkitUserSelect: 'none' } }>
-
-        <div style={ { display: 'flex', flexWrap: 'wrap', flexDirection : Orientation==='horizontal' ? 'row' : 'column-reverse' }}>
-
-          <div style={ Orientation==='horizontal'? Map_Layout_Horizontal : Map_Layout_Vertical }>
-
-            <div style={{position:'relative', height: '100%', display:'flex', flexDirection:  Orientation==='horizontal' ? 'column' : 'row'  }}>
-
-              <button onClick={CreateModelOption} style={OptionButtonStyle}>Create model</button>
-              <button onClick={DownloadsOption} style={OptionButtonStyle}>Download</button>
-
-            </div>
-            {Downloads()}
-            {createModel()}
             <MsgBox 
                       message={Messages}
                       layoutStyle = {MessageBoxStyle}
@@ -1211,40 +1191,52 @@ const setNewMessage=(message)=>{
 
     
           </div>
-          <div style ={{position:'absolute', right:'0', top:'0' ,zIndex:'2', width: 'fit-content',height: 'fit-content'} }>
 
-              <VisibilityButton
-      
+          <div style ={{position:'absolute', right:'0', top:'0' ,zIndex:'2', width: 'fit-content',height: 'fit-content'} }>
+            <div style={{display: 'flex', flexWrap: 'wrap'}}>
+    
+                <ThreeDinfo
+                    infoBubbleStyle = {ThreeDinfoBubble}
+                    memUsed = {memUsed}
+                    modRes = {modRes}
+                    modPointAmount = {modPointAmount}>           
+                </ThreeDinfo>
+               
+              <div>
+                  <VisibilityButton   
                             show3D = {show3D} 
                             pending = {pending}
                             ThreeDVisibility = {ThreeDVisibility}
                             style = {buttonStyle}
                             ThreeDReady  ={ThreeDReady} >
+                  </VisibilityButton>
 
-              </VisibilityButton>
-
-              <MapOptionButtons
+                  <MapOptionButtons
                             reCenterBox = {reCenterBox}
                             show3D = {show3D}
                             buttonStyle  = {mapOptionButtonStyle}
                             showNormalMap = {showNormalMapLayer}
                             hideLayer = {hideLayer}>
-              </MapOptionButtons>
+                  </MapOptionButtons>
 
-              <ThreeDoptionButtons
+                  <ThreeDoptionButtons
                             ThreeDfitToScreen = {ThreeDfitToScreen}
                             buttonStyle  = {ThreeDoptionButtonStyle}
-                            ChangeShadow = {ChangeShadow}
-                            ChangeShadowFunc = {ChangeShadowFunc}>                        
-              </ThreeDoptionButtons>
-
-          </div>
-          
-          </div>
-          
-          <div id='myMap' style={ {userSelect : 'none', WebkitUserSelect: 'none', width: "100vw", height: '100vh',  zIndex: show3D?"-1":"1", position: 'absolute'  }} ref={mapRef} />
-          <div> <ThreeD_view 
-
+                            ModType = {ModType}
+                            ChangeModType = {ChangeModTypeFunc}
+                            showThreeDinfoFunc = {show3DinfoFunc}
+                            showThreeDinfo  = {showThreeDinfo} >                                   
+                  </ThreeDoptionButtons>
+              </div>
+            </div>
+          </div>        
+        </div>    
+        <div id='myMap' style={ {userSelect : 'none', WebkitUserSelect: 'none', width: "100vw", height: '100vh',  zIndex: show3D?"-1":"1", position: 'absolute'  }} ref={mapRef} />
+          <div> <ThreeDview
+                        setModPointAmount = {setModPointAmount}
+                        setModRes = {setModRes}
+                        setMemUsed = {setMemUsed}
+                        modRes = {modRes}
                         setSceneCreated = {setSceneCreated}
                         setTexture = {setTextureFile}
                         setMessage = {setNewMessage}
@@ -1261,7 +1253,6 @@ const setNewMessage=(message)=>{
                         dimensionY = {heightDir}
                         res_U = {Xref.current}
                         res_V = {Yref.current}
-                        res = {res}
                         apikey = {props.apikey}
                         TopLeft = {TopLeft}
                         BottomRight = {BottomRight}
@@ -1270,11 +1261,10 @@ const setNewMessage=(message)=>{
                         ThreeDfitToScreen = {ThreeDfitToScreen}
                         orientation = {Orientation}
                         setThreeDReady  ={setThreeDReady}
-                        ChangeShadow = {ChangeShadow}
-                        ChangeShadowFunc = {ChangeShadowFunc}> 
-                        
-                      
-            </ThreeD_view></div>
+                        ModType = {ModType}
+                        ChangeModTypeFunc = {ChangeModTypeFunc}> 
+            </ThreeDview>
+          </div>
       </div>
       )
     
