@@ -1,10 +1,13 @@
 import { exportToExcel } from 'react-json-to-excel';
-import { forwardRef } from 'react';
+import { forwardRef, useContext } from 'react';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import fileDownload from 'js-file-download';
+import { VisibilityContext } from '../contexts/VisibilityContext';
 
 const Download = forwardRef(function SaveExcel (props, ref){
+
+    const visibility = useContext(VisibilityContext)
 
     const DownloadTopoMod =()=>{
 
@@ -42,18 +45,23 @@ const Download = forwardRef(function SaveExcel (props, ref){
 
 
     return (
-        <div style = {props.backgroundStyle}>
-        <h4>Download</h4>
-            <div>     
-                <button style = {props.buttonStyle} disabled ={props.Coords.length > 1 && props.pending===false? false : true} onClick={DownloadExcel}> Coordinates as .xlsx</button>
-                <button style = {props.buttonStyle} disabled ={props.Coords.length > 1 && props.pending===false? false : true} onClick={DownloadTopoMod}>Model as .OBJ</button>
-                <button style = {props.buttonStyle} disabled ={props.Coords.length > 1 && props.pending===false? false : true} onClick={DownloadTopoSTL}>Model as .stl</button>
-                <button style = {props.buttonStyle} disabled ={props.Coords.length > 1 && props.pending===false && props.texture? false : true} onClick={DownloadTexture}>Texture as .jpeg</button>
-                <br></br>
-                <br></br>
+        <div style={{size:'100% 100%', display: visibility.ShowDownloads?'block' : 'none'}}>
+            <div style = {props.backgroundStyle}>
+                <h4>Download</h4>
+                    <div>     
+                        <button style = {props.buttonStyle} disabled ={props.Coords.length > 1 && props.pending===false? false : true} onClick={DownloadExcel}> Coordinates as .xlsx</button>
+                        <button style = {props.buttonStyle} disabled ={props.Coords.length > 1 && props.pending===false? false : true} onClick={DownloadTopoMod}>Model as .OBJ</button>
+                        <button style = {props.buttonStyle} disabled ={props.Coords.length > 1 && props.pending===false? false : true} onClick={DownloadTopoSTL}>Model as .stl</button>
+                        <button style = {props.buttonStyle} disabled ={props.Coords.length > 1 && props.pending===false && props.texture? false : true} onClick={DownloadTexture}>Texture as .jpeg</button>
+                        <br></br>
+                        <br></br>
 
-            </div>
+                    </div>
         </div>
+
+
+        </div>
+        
     )
 })
 export default Download

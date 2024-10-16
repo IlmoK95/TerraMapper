@@ -1,16 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useContext } from 'react';
 import Delaunator from 'delaunator'
 import * as THREE from 'three'
 import textureService from '../sources/GETtexture'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { VisibilityContext } from '../contexts/VisibilityContext';
 
 
 const ThreeD_view =(props)=>{
 
     const TextureRef = useRef(new THREE.TextureLoader().load('../textures/placeHolder.jpg' ))
     const modelRef = useRef(null)
-    const ResRef = useRef(null)
     const renderer = useRef(null)
     const camera = useRef(null)
     const scene = useRef(null)
@@ -19,9 +19,10 @@ const ThreeD_view =(props)=>{
     const UV_vals = useRef(null)
     const textureMessage = useRef(' ')
     const bufferGeometry = useRef(null)
-    const vertexAmount = useRef(null)
 
     const [res, setRes] = useState(null)
+
+    const visibility = useContext(VisibilityContext)
     
 
     
@@ -67,7 +68,7 @@ const ThreeD_view =(props)=>{
 
         newDiv.appendChild( renderer.current.domElement )
         document.body.appendChild( newDiv )
-        props.setSceneCreated(true)
+
 
     }, [] )
 
@@ -76,7 +77,7 @@ const ThreeD_view =(props)=>{
     animate()
     function animate(){
      
-        if(modelRef.current  && props.show3D){
+        if(modelRef.current  && visibility.show3D){
 
             requestAnimationFrame( animate ); 
 	        renderer.current.render( scene.current, camera.current );
@@ -300,7 +301,7 @@ const ThreeD_view =(props)=>{
             var bytes = BufferGeometryUtils.estimateBytesUsed(bufferGeometry.current)
 
             if (bytes < 1000){
-                memoryUsage = `${bytes} b`
+                memoryUsage = `~${bytes} b`
             }else if (bytes >= 1000 && bytes < 1000000){
                 memoryUsage = `~${Math.floor(bytes * 0.01)} kb`
             }else {
@@ -308,7 +309,7 @@ const ThreeD_view =(props)=>{
             }
 
             props.setMemUsed(memoryUsage)
-            props.setModRes(res)
+            props.setModRes(res.toFixed(3))
             props.setModPointAmount(`${bufferGeometry.current.getAttribute('position').count}`)
             
         }

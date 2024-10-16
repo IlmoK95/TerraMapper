@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useReducer} from 'react';
 import H from '@here/maps-api-for-javascript';
 import SetDataComp from './components/CreateModelComp';
-import ElevationService from './sources/elevations'
+import ElevationService from './sources/GETelevations'
+import SoftSearchService from './sources/GETsoftSearch'
 import MsgBox from './components/MessageBox';
 import Download from './components/DownloadComp';
 import ThreeDview from './components/3Dview';
@@ -9,11 +10,20 @@ import VisibilityButton from './components/VisibilityButton';
 import MapOptionButtons from './components/MapOptionButtons';
 import ThreeDoptionButtons from './components/ThreeDoptionButtons';
 import ThreeDinfo from './components/3DInfo';
+import Search from './components/searchInput';
+import OptionButtons from './components/OptionButtons';
+import AutoCompleteService from './sources/GETautoComplete'
+import { VisibilityContext } from './contexts/VisibilityContext';
+import { OrientationContext } from './contexts/OrientationContext';
 import './index.css';
 
 
 
+
+
 const Map = ( props ) => {
+
+
     const limit  = useRef(50000)
     const bottomMid = useRef()
     const rightMid = useRef()
@@ -22,9 +32,7 @@ const Map = ( props ) => {
     const mapRef = useRef(null);
     const map = useRef(null);
     const ThreeDRef = useRef(null);
-    const Xref = useRef(3.5)
     const APIelevations = useRef([])
-    const Yref = useRef(3.5)
     const Resref = useRef(3.5)
     const wgsCoords = useRef([])
     const recRef = useRef(null);
@@ -43,9 +51,15 @@ const Map = ( props ) => {
     const BottomRightCorner = useRef(null)
     const behaviorRef  =useRef(null)
     const isMobile = useRef(false)
+    const defaultZoom = useRef(12)
+
+
+    
+   
 
     const [heightDir, setHeight] = useState(0)
     const [widthDir, setWidth] = useState(0)
+
     const [show3D, setShow3D] = useState(false)
     const [download3D, setDownload3D] = useState(false)
     const [Coords, setWgsCoords] = useState([{data : 'no data'}])
@@ -61,7 +75,6 @@ const Map = ( props ) => {
     const [currentMax, setCurrentMax] = useState(limit.current)
     const [TopoMod, SetTopoMod] = useState(null)
     const [TextureFile, setTextureFile] = useState(null)
-    const [sceneCreated, setSceneCreated] = useState(false)
     const [fitToScreen, SetFitToScreen] = useState(false)
     const [Orientation, setOrientation] = useState(window.innerWidth < window.innerHeight? 'vertical' : 'horizontal')
     const [layers, setLayers] = useState(null)
@@ -76,34 +89,100 @@ const Map = ( props ) => {
     const [modPointAmount, setModPointAmount] = useState(null)
     const [modRes, setModRes] = useState(null)
     const [memUsed, setMemUsed] = useState(null)
+    const [searchVisible, setSearchVisible] = useState(null)
+    const [searchFieldVal, setSearchFieldVal] = useState(null)
+    const [center, setCenter] = useState({lat: 35.3606,lng: 138.7274})
+    const [autoSuggestions, setAutoSuggestions] = useState([])
 
 
-    const OptionButtonStyle = {flex: '1',
-      width: Orientation==='horizontal'? '75px' : '100vw', height : Orientation==='horizontal'? '100vh' : '75px',
-      boxSizing: 'border-box'}
+ 
+    
+    //Commonly shared, not component specific CSS styles:
+    const BigButtonStyle = { 
+                             marginLeft:'10px',
+                             marginTop:'10px',
+                             fontSize: '15px', 
+                             zIndex:'2', 
+                             borderColor:'red', 
+                             borderWidth: '5px', 
+                             borderRadius: '10px', 
+                             paddingTop : '10px', 
+                             paddingBottom : '10px'
+                            }
+    
+    const Options_Horizontal = {
+                                position: 'absolute', 
+                                height: "100vh", 
+                                width:'fit-content', 
+                                left:'0',  zIndex: "400",  
+                                display:'flex', 
+                                flexDirection:'row'
+                              } 
+                                
+    const Options_Vertical = { 
+                               position: 'absolute',
+                               width:'100vw',
+                               bottom: '0',
+                               zIndex: "100",
+                               display:'flex',
+                               flexDirection:'column-reverse'
+                              } 
 
-    const buttonStyle = { marginLeft:'10px', marginTop:'10px', fontSize: '20px', zIndex:'2', borderColor:'red', borderWidth: '5px', borderRadius: '10px' }
-    const mapOptionButtonStyle = {padding:'7px', marginLeft:'10px', marginTop:'10px', fontSize: '15px', display: show3D?"none":"block", borderRadius: '10px' }
-    const ThreeDinfoBubble = { flexWrap: 'wrap', background : 'white',marginTop: '10px', borderRadius:'20px 5px 5px 20px', height : 'fit-content', width : 'fit-content', padding : '2px 10px 2px 10px', fontSize: '15px', display: show3D && showThreeDinfo ?"flex":"none"}
-    const ThreeDoptionButtonStyle = {padding:'7px', marginLeft:'10px', marginTop:'10px', fontSize: '15px', display: show3D?"block":"none", borderRadius: '10px' }
-    const OptionTableView = {backgroundColor : 'white', borderRadius : '20px', margin:'auto', width : Orientation==='horizontal'? '20vw' : 'auto',  height : Orientation==='horizontal'? '100vh' : 'auto', padding : '15px'  }
-    const MessageBoxStyle = {position:'fixed', top:'5vh', left: Orientation==='horizontal'? '35vw' : '0vw', width: '20vw', zIndex: "100", fontSize:'20px', backgroundColor : 'white', borderRadius : '20px', padding: '10px'}
+    
+    const OptionTableView = {
+                              backgroundColor : 'white',
+                              borderStyle : 'solid',borderColor : 'grey',
+                              borderWidth : '1px',
+                              borderRadius : Orientation==='horizontal'? '0px 20px 20px 0px' : '20px 20px 0px 0px',
+                              boxShadow: Orientation==='horizontal'? '15px 15px 15px 15px rgba(0, 0, 0, .1)' : '15px 15px 15px 30px rgba(0, 0, 0, .1)',
+                              margin:'auto', width : Orientation==='horizontal'? '20vw' : 'auto',
+                              height : Orientation==='horizontal'? '100%' : 'auto' ,
+                              paddingRight : '15px',
+                              paddingLeft : '15px'
+                            }
+    
 
+    useEffect(() => {
 
-    const Map_Layout_Horizontal = {position: 'absolute', height: "100vh",  width:'fit-content', left:'0',  zIndex: "100",   display:'flex', flexDirection:'row'} 
-    const Map_Layout_Vertical = {position: 'absolute',  width:'100vw',  bottom: '0', zIndex: "100",  display:'flex', flexDirection:'column-reverse'} 
+      let buttons = document.getElementsByTagName('button')
+      if(buttons.length === 0) return
+      for(let b of buttons){
+
+       b.addEventListener('pointerenter', (e)=>{
+          if(e.target.disabled) return
+          e.target.style.backgroundColor = 'rgb(210,210,210)'
+          console.log('enter')
+  
+        } ) 
+        
+        b.addEventListener('pointerleave', (e)=>{
+          if(e.target.disabled) return
+          e.target.style.backgroundColor = 'rgb(240,240,240)'
+  
+        } ) 
+
+      }
+      
+
+    }, [])
+
 
     useEffect(() => {
       if(/|tablet|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
         isMobile.current = true
       }
 
+      if(navigator.userAgent.indexOf('iPhone') > -1 )
+        {
+            document
+              .querySelector("[name=viewport]")
+              .setAttribute("content","width=device-width, initial-scale=1, maximum-scale=1");
+        }
+
     }, [])
 
     useEffect(
       () => {
-
-
         if (!map.current) {
 
           platform.current = new H.service.Platform({ apikey });
@@ -121,12 +200,9 @@ const Map = ( props ) => {
           document.getElementById("myMap"),
           defaultLayers.raster.satellite.xbase, {
               engineType: engineType,
-              zoom: 12,
+              zoom: defaultZoom.current,
               pixelRatio: window.devicePixelRatio,
-              center: {
-                      lat: 35.3606,
-                      lng: 138.7274
-                  }
+              center: center
           });
           
           const behavior = new H.mapevents.Behavior(
@@ -146,19 +222,67 @@ const Map = ( props ) => {
     );
 
 
-    useEffect(()=>{
+useEffect(()=>{
       window.addEventListener('resize', resizeMap )    
       
-    return ()=>  window.removeEventListener('resize', resizeMap )})
+      return ()=>  window.removeEventListener('resize', resizeMap )})
 
 
-    const resizeMap=()=>{
+
+useEffect(()=>{
+        window.addEventListener('fetch', logMethod )    
+        
+        return ()=>  window.removeEventListener('fetch', logMethod )})
+
+
+
+
+const logMethod =(event)=>{
+
+  console.log(event.request.method)
+
+
+}
+
+
+
+
+
+
+useEffect(()=>{
+  resizeInputField()
+ 
+}, [searchVisible, showCreateMod, ShowDownloads, Orientation])
+
+
+const resizeMap=()=>{
       map.current.getViewPort().resize()
-    }
+      resizeInputField()      
+}
+
+
+const resizeInputField =()=>{
+
+  let search = document.getElementById('search')
+
+  if(Orientation==='horizontal' && (showCreateMod || ShowDownloads) && searchVisible){
+
+    let percentage = (document.getElementById('Options_Left').offsetWidth / window.innerWidth) * 100 
+    search.style.left = `${percentage}%`
+    search.style.transform = 'translate(0%)'
+    search.style.width = `${window.innerWidth - document.getElementById('Options_Left').offsetWidth}px`
+ 
+  }else{
+
+    search.style.left = `50%`
+    search.style.transform = `translate(-50%)`
+
+  }
+}
 
 
 
-    const getElevationData=()=>{
+ const getElevationData=()=>{
 
       setPendingStatus(true)
       wgsCoords.current = []
@@ -180,8 +304,8 @@ const Map = ( props ) => {
 
         //number of API calls:
         let length = pointAmount / 100
-        let APICalls = 1
 
+        let APICalls = 1
         if (length >= 1) {
           APICalls = Math.ceil(length)
         }
@@ -250,7 +374,8 @@ function APICall (start, end, APIcallNmb, call, lat, lng, pointAmount){
 
 
 
-function createResizableRect() {
+
+const createResizableRect=()=> {
 
       var center_x = window.innerWidth / 2
       var center_y = window.innerHeight / 2
@@ -614,6 +739,9 @@ function createResizableRect() {
           }
     
           // set the new bounding box for rect object
+          if(newGeoRect===undefined){
+            return
+          }
           rect.setBoundingBox(newGeoRect);
     
           // extract first point of the outline LineString and push it to the end, so the outline has a closed geometry
@@ -624,7 +752,7 @@ function createResizableRect() {
           // prevent event from bubling, so map doesn't receive this event and doesn't pan
           event.stopPropagation();
         }
-        var  currentGeoRect = rect.getGeometry().getBoundingBox();
+        var currentGeoRect = rect.getGeometry().getBoundingBox();
         var objectTopLeftScreen = map.current.geoToScreen(currentGeoRect.getTopLeft());
         var objectBottomRightScreen = map.current.geoToScreen(currentGeoRect.getBottomRight());
 
@@ -681,8 +809,144 @@ const checkOrientation=()=>{
 }
 
 
+const autoComplete =(searchFieldVal)=>{
+
+  var autoSuggestions = []
+  AutoCompleteService
+                    .GetAutoComplete(searchFieldVal, props.apikey)
+                    .then( response =>{
+                      autoSuggestions = response.data.items.map( loc => { return loc.title} )
+                      setAutoSuggestions(autoSuggestions)
+
+                    })
+                    .catch(error => setNewMessage([' ',`❌ Search failed: ${error.message}`]))
+}
+
+const reformat1 =(coord)=>{
+
+  const reformatPos=( pos, posName )=>{
+
+      let multiPlier = /S|W/.test(pos) ? -1 : 1
+      let posChunks = pos.split(/[°′″NSEW]/)
+
+      
+      posChunks = posChunks.filter(n => n!== '')
+      
+      let reformattedCoord = null
+      if( posChunks.length === 1 ){
+        
+        reformattedCoord =  Number(posChunks[0]) * multiPlier
+
+        
+      }else if( posChunks.length===3 ){
+        
+         reformattedCoord = (Number(posChunks[0]) + (Number(posChunks[1]) * 60 + Number(posChunks[2])) / 3600) * multiPlier
+         
+      }
+
+      if (posName === 'lat'){
+
+        reformattedCoord = reformattedCoord > 90 || reformattedCoord < -90 ? null : reformattedCoord
+
+      }else{
+
+        reformattedCoord = reformattedCoord > 180 || reformattedCoord < -180 ? null : reformattedCoord
+        
+      }
+      
+      return reformattedCoord
+  }
+
+  let latLng = coord.split(" ")
+  
+  let reformattedCoords = {lat: reformatPos(latLng[0], 'lat'), lng: reformatPos(latLng[1], 'lng')}
+  reformattedCoords = reformattedCoords.lat === null || reformattedCoords.lng === null ? null : reformattedCoords
+  return reformattedCoords
+}
 
 
+
+const sortInput =(searchTarget = searchFieldVal)=> {
+
+  //40°26′46″N 079°58′56″W
+  const regex1 = { exp : /^[0-9]{1,2}(°)[1-9]{1,2}(′)[1-9]{0,2}(″N|″S)(\s)[0-9]{1,3}(°)[0-9]{1,3}(′)[0-9]{1,2}(″E|″W)/dgi,
+    func : reformat1
+  }
+    
+  //402646302N 0795855903W
+  //formatting function doesnt exist for this wgs expression yet
+  const regex3 = { exp : /^[0-9]{1,}(N|S)(\s)[0-9]{1,}(E|W)/dgi,
+    func : reformat1
+  }
+
+  //40.446195N 79.982195W
+  const regex4 = { exp : /^[0-9]{1,2}(\.)[0-9]{1,}(N|S)(\s)[0-9]{1,3}(\.)[0-9]{1,}(E|W)/dgi,
+    func : reformat1
+  }
+
+  //40N 79W
+  const regex5 = { exp : /^[0-9]{1,2}(N|S)(\s)[0-9]{1,3}(E|W)/dgi,
+    func : reformat1
+  }  
+    
+  //40.446195 -79.982195
+  const regex6 = { exp : /^(-){0,1}[0-9]{1,2}(\.)[0-9]{1,}(\s)(-){0,1}[0-9]{1,3}(\.)[0-9]{0,}/dgi,
+    func : reformat1
+  } 
+
+  //40 -79
+  const regex7 = { exp : /^(-){0,1}[0-9]{1,2}(\s)(-){0,1}[0-9]{1,3}/dgi,
+    func : reformat1
+  } 
+
+  const regexArray = [regex1, regex4, regex5, regex6, regex7]
+
+  //check whether the query is supported coordinate expression:
+  let isCoordinate = false
+  regexArray.forEach(regEx =>{
+    
+    var res = regEx.exp.test(searchTarget)
+    if(res){
+      isCoordinate = true
+      var targetCoord = regEx.func(searchTarget)
+      !targetCoord? setNewMessage([`❌ unrecognized coordinate`]) : setCenter( targetCoord )
+      setAutoSuggestions([]) 
+      return
+    }
+  })
+  //if query is not a recognised coord, value is searched as an address:
+  if (!isCoordinate){
+    softSearch()
+  }
+
+}
+
+const softSearch = (searchTarget = searchFieldVal)=>{
+
+  SoftSearchService
+              .GetSoftSearch(searchTarget, props.apikey)
+              .then( response => {
+                     if (response.data.items.length > 0) {
+                        setCenter( response.data.items[0].position ) 
+                        setAutoSuggestions([])            
+                      }
+                      else{
+                      setNewMessage([`❌ unrecognized location`])
+                      } 
+                    })
+                                
+              .catch(error => setNewMessage([' ',`❌ Search failed: ${error.message}`]))
+}
+
+useEffect(()=>{
+
+  if(map.current){
+    map.current.setCenter(center)
+    map.current.setZoom(defaultZoom.current)
+    reCenterBox()
+  }
+
+},[center])
 
 
 const setToMaxRes =()=>{
@@ -695,16 +959,11 @@ const setToMaxRes =()=>{
 }
 
 const screen_XY =(event)=>{
-
-
   return [event.currentPointer.viewportX, event.currentPointer.viewportY]
-
 }
 
-
-
   //straight line distance between the coordinates
-  const DirectDistance=(coord_1, coord_2)=>{
+const DirectDistance=(coord_1, coord_2)=>{
 
     let angle1 = coord_1 * Math.PI / 180
     let angle2 = coord_2 * Math.PI / 180
@@ -734,8 +993,6 @@ const screen_XY =(event)=>{
 
     setTextureDims({h : h_new, w : w_new})
   }
-
-
 
   const CalcMaxPointAmount=()=>{
 
@@ -798,11 +1055,7 @@ const screen_XY =(event)=>{
 
   }
 
-
-
-
   const CalcPointAmount =()=>{
-
 
     rectHeight.current = BottomRightCorner.current.y - TopLeftCorner.current.y 
     rectWidth.current = BottomRightCorner.current.x - TopLeftCorner.current.x
@@ -868,6 +1121,13 @@ const screen_XY =(event)=>{
     return time
   }
 
+  /* const resizeInputField =()=>{
+
+    var inputWidth = document.getElementById('Options_Left').offsetWidth
+    setinputWidth(inputWidth)
+
+  }
+ */
 
 
   const SetMeasurements=(h, w)=>{
@@ -969,9 +1229,7 @@ const setNewMessage=(message)=>{
 }
 
 
-
-
-const setMeasurementMarkers=()=>{
+  const setMeasurementMarkers=()=>{
 
       markerRef.current.forEach(element => {
         markerRef.current.removeObject(element)
@@ -1020,10 +1278,9 @@ const setMeasurementMarkers=()=>{
       markerRef.current.addObject(heightMarker)
       markerRef.current.addObject(CenterMarker)
 
-}
+  }
 
-    const getDistances=(TopLeft, BottomRight)=>{
-      
+  const getDistances=(TopLeft, BottomRight)=>{
 
       if (coordinatesList.current) {
 
@@ -1038,42 +1295,56 @@ const setMeasurementMarkers=()=>{
  
       }
 
-    } 
+  } 
 
-
-    const showNewMod =()=>{
+  const showNewMod =()=>{
       setShowNewMod(!newMod)
-    }
+  }
 
-
-
-    const set_Resolution=(e)=>{
+  const set_Resolution=(e)=>{
 
       Resref.current = Math.abs(e.target.value)
       setRes(Math.abs(e.target.value))
       updateResolution()
      
+  }
 
-    }
 
-
-    const ThreeDfitToScreen=()=>{
+  const ThreeDfitToScreen=()=>{
       SetFitToScreen(!fitToScreen)
-    }
+  }
 
-
-    const ChangeModTypeFunc=()=>{
+  const ChangeModTypeFunc=()=>{
       if(ModType==='detailed'){
         setModType('.obj')
       }else{
         setModType('detailed')
       }  
-    }
+  }
 
+  const searchFieldinput=(e)=>{
+      var inputVal = e.target.value
+      setSearchFieldVal(inputVal)
+      if(inputVal!==''){
+        autoComplete(inputVal)
+      }else{
+        setAutoSuggestions([])
+      }
+
+  }
+
+
+  const searchAutoSuggestion =(autosuggestion)=>{
     
+      const searchBar = document.getElementById("searchBar")
+      searchBar.value = autosuggestion
+      setSearchFieldVal(autosuggestion)
+      softSearch(autosuggestion)
+      setAutoSuggestions([])
 
+  }
 
-    const updateResolution=()=>{
+  const updateResolution=()=>{
 
         var  currentGeoRect = recRef.current.getGeometry().getBoundingBox();
         var objectTopLeftScreen = map.current.geoToScreen(currentGeoRect.getTopLeft());
@@ -1084,21 +1355,21 @@ const setMeasurementMarkers=()=>{
         CalcPointAmount(false)
  
 
-    }
+  }
 
-    const ThreeDVisibility = ()=>{
+  const ThreeDVisibility = ()=>{
       setShow3D(!show3D)
      
-    }
+  }
 
 
-    const DownloadThreeD =()=>{
+  const DownloadThreeD =()=>{
       setDownload3D(!download3D)
 
-    }
+  }
 
 
-    const reCenterBox=()=>{
+  const reCenterBox=()=>{
 
       recGroupRef.current.forEach(element => {
         recGroupRef.current.removeObject(element)
@@ -1110,161 +1381,169 @@ const setMeasurementMarkers=()=>{
 
       createResizableRect(map.current, behaviorRef.current)
       
-    }
+  }
 
 
-    const showNormalMapLayer=()=>{
+  const showNormalMapLayer=()=>{
 
       hideLayer?  map.current.removeLayer(layers.raster.terrain.map) : map.current.addLayer(layers.raster.terrain.map)
       setHideLayer(!hideLayer)
 
 
-    }
+  }
 
-    const DownloadsOption=()=>{
+  const DownloadsOption=()=>{
       setShowDownloads(!ShowDownloads)
       setShowCreateMod(false)
-    }
+  }
 
-    const show3DinfoFunc =()=>{
+  const show3DinfoFunc =()=>{
       setShowThreeDinfo(!showThreeDinfo)
-    }
+  }
 
-    const CreateModelOption=()=>{
+  const CreateModelOption=()=>{
       setShowCreateMod(!showCreateMod)
       setShowDownloads(false)
 
-    }
+  }
 
 
+
+
+  
+  const setSearchVisibleFunc=()=>{
+      setSearchVisible(!searchVisible)
+  }
 
     return (
-      <div style={ { width: "100vw", height: "100wh", display: 'flex', flexWrap: 'wrap', userSelect : 'none', WebkitUserSelect: 'none' } }>
-        <div style={ { display: 'flex', flexWrap: 'wrap', flexDirection : Orientation==='horizontal' ? 'row' : 'column-reverse' }}>
-          <div style={ Orientation==='horizontal'? Map_Layout_Horizontal : Map_Layout_Vertical }>
-            <div style={{position:'relative', height: '100%', display:'flex', flexDirection:  Orientation==='horizontal' ? 'column' : 'row'  }}>
+      <div >
 
-              <button onClick={CreateModelOption} style={OptionButtonStyle}>Create model</button>
-              <button onClick={DownloadsOption} style={OptionButtonStyle}>Download </button>
-
-            </div>
-            <div style={{size:'100% 100%', display: ShowDownloads?'block' : 'none'}}>
-              <Download 
-                    texture={TextureFile} 
-                    getDate = {getDate} 
-                    setMessage={setNewMessage} 
-                    TopoMod  ={TopoMod} 
-                    Coords = {Coords} 
-                    pending = {pending} 
-                    ref = {wgsCoords}
-                    buttonStyle = {buttonStyle}
-                    backgroundStyle = {OptionTableView}>
-              </Download>
-            </div>
-            <div style={{size:'100% 100%', display: showCreateMod?'block' : 'none'}}>
-              <SetDataComp 
-                        invalidMes  = {invalidMes}
-                        invalidPoints  = {invalidPoints}
-                        pointAmount  = {pointAmount} 
-                        currentMax = {currentMax} 
-                        res  = {res} 
-                        show3D = {show3D} 
-                        pending = {pending} 
-                        set_Resolution = {set_Resolution}
-                        SetLngLat = {SetLngLat}
-                        NewResMax = {NewResMax}
-                        resAbsMax = {resAbsMax.current}
-                        Coords = {Coords}
-                        ThreeDVisibility = {ThreeDVisibility}
-                        buttonStyle = {buttonStyle}
-                        backgroundStyle = {OptionTableView}
-                        >
-              </SetDataComp>
-            </div>
-            <MsgBox 
-                      message={Messages}
-                      layoutStyle = {MessageBoxStyle}
-                      pending = {pending}
-                      ThreeDReady = {ThreeDReady}
-                     >
-              </MsgBox> 
-
-    
-          </div>
-
-          <div style ={{position:'absolute', right:'0', top:'0' ,zIndex:'2', width: 'fit-content',height: 'fit-content'} }>
-            <div style={{display: 'flex', flexWrap: 'wrap'}}>
-    
-                <ThreeDinfo
-                    infoBubbleStyle = {ThreeDinfoBubble}
-                    memUsed = {memUsed}
-                    modRes = {modRes}
-                    modPointAmount = {modPointAmount}>           
-                </ThreeDinfo>
-               
-              <div>
-                  <VisibilityButton   
-                            show3D = {show3D} 
-                            pending = {pending}
-                            ThreeDVisibility = {ThreeDVisibility}
-                            style = {buttonStyle}
-                            ThreeDReady  ={ThreeDReady} >
-                  </VisibilityButton>
-
-                  <MapOptionButtons
-                            reCenterBox = {reCenterBox}
-                            show3D = {show3D}
-                            buttonStyle  = {mapOptionButtonStyle}
-                            showNormalMap = {showNormalMapLayer}
-                            hideLayer = {hideLayer}>
-                  </MapOptionButtons>
-
-                  <ThreeDoptionButtons
-                            ThreeDfitToScreen = {ThreeDfitToScreen}
-                            buttonStyle  = {ThreeDoptionButtonStyle}
-                            ModType = {ModType}
-                            ChangeModType = {ChangeModTypeFunc}
-                            showThreeDinfoFunc = {show3DinfoFunc}
-                            showThreeDinfo  = {showThreeDinfo} >                                   
-                  </ThreeDoptionButtons>
-              </div>
-            </div>
-          </div>        
-        </div>    
         <div id='myMap' style={ {userSelect : 'none', WebkitUserSelect: 'none', width: "100vw", height: '100vh',  zIndex: show3D?"-1":"1", position: 'absolute'  }} ref={mapRef} />
-          <div> <ThreeDview
-                        setModPointAmount = {setModPointAmount}
-                        setModRes = {setModRes}
-                        setMemUsed = {setMemUsed}
-                        modRes = {modRes}
-                        setSceneCreated = {setSceneCreated}
-                        setTexture = {setTextureFile}
-                        setMessage = {setNewMessage}
-                        SetTopoMod = {SetTopoMod}
-                        show3D = {show3D}
-                        ref={ThreeDRef} 
-                        coordinates={Coords} 
-                        NewMod = {newMod} 
-                        showNewModFunc = {showNewMod} 
-                        DownloadFunc = {DownloadThreeD} 
-                        Download3DVar = {download3D} 
-                        ShowThreeD = {ThreeDVisibility} 
-                        dimensionX = {widthDir} 
-                        dimensionY = {heightDir}
-                        res_U = {Xref.current}
-                        res_V = {Yref.current}
-                        apikey = {props.apikey}
-                        TopLeft = {TopLeft}
-                        BottomRight = {BottomRight}
-                        dims = {textureDims}   
-                        FitToScreen = {fitToScreen}
-                        ThreeDfitToScreen = {ThreeDfitToScreen}
-                        orientation = {Orientation}
-                        setThreeDReady  ={setThreeDReady}
-                        ModType = {ModType}
-                        ChangeModTypeFunc = {ChangeModTypeFunc}> 
-            </ThreeDview>
-          </div>
+
+        <VisibilityContext.Provider value = {{show3D, ShowDownloads, showCreateMod, showThreeDinfo, searchVisible, hideLayer}}>
+          <OrientationContext.Provider value = {Orientation}> 
+      
+              <div id='UI_elements'>
+
+                <MsgBox 
+                              message={Messages}
+                              pending = {pending}
+                              ThreeDReady = {ThreeDReady}
+                            >
+                </MsgBox>
+
+                <div id='Options_Left' style={ Orientation==='horizontal'? Options_Horizontal : Options_Vertical }>
+
+                   <OptionButtons
+                              CreateModelOption = {CreateModelOption}
+                              DownloadsOption = {DownloadsOption}>
+                  </OptionButtons> 
+                  <Download 
+                              texture={TextureFile} 
+                              getDate = {getDate} 
+                              setMessage={setNewMessage} 
+                              TopoMod  ={TopoMod} 
+                              Coords = {Coords} 
+                              pending = {pending} 
+                              ref = {wgsCoords}
+                              buttonStyle = {BigButtonStyle}
+                              backgroundStyle = {OptionTableView}>
+                    </Download>
+                    <SetDataComp 
+                              invalidMes  = {invalidMes}
+                              invalidPoints  = {invalidPoints}
+                              pointAmount  = {pointAmount} 
+                              currentMax = {currentMax} 
+                              res  = {res} 
+                              pending = {pending} 
+                              set_Resolution = {set_Resolution}
+                              SetLngLat = {SetLngLat}
+                              NewResMax = {NewResMax}
+                              resAbsMax = {resAbsMax.current}
+                              Coords = {Coords}
+                              ThreeDVisibility = {ThreeDVisibility}
+                              buttonStyle = {BigButtonStyle}
+                              backgroundStyle = {OptionTableView}
+                              >
+                    </SetDataComp>
+          
+                </div >
+
+                    <Search                  
+                               searchFieldinput = {searchFieldinput}
+                               sortInput  = {sortInput}
+                               autoSuggestions = {autoSuggestions}
+                               searchAutoSuggestion = {searchAutoSuggestion}
+                               setSearchVisibleFunc = {setSearchVisibleFunc}>
+                    </Search> 
+                      
+                <div id='Elements_Right' style = {{position: 'absolute',
+                                                display : 'flex',
+                                                flexWrap : 'wrap',
+                                                top:  Orientation==='horizontal'? '50%' : '30%',
+                                                transform : 'translate(0%, -50%)', 
+                                                right:'0',
+                                                zIndex:'100'}}
+                    >
+
+                    <ThreeDinfo
+                                  memUsed = {memUsed}
+                                  modRes = {modRes}
+                                  modPointAmount = {modPointAmount}
+                                  >           
+                    </ThreeDinfo> 
+                    <div id='Buttons_Right'>
+                      <MapOptionButtons
+                                            reCenterBox = {reCenterBox}
+                                            showNormalMap = {showNormalMapLayer}
+                                            >
+                      </MapOptionButtons>  
+                      <ThreeDoptionButtons
+                                        ThreeDfitToScreen = {ThreeDfitToScreen}       
+                                        ModType = {ModType}
+                                        ChangeModType = {ChangeModTypeFunc}
+                                        showThreeDinfoFunc = {show3DinfoFunc}>                                   
+                        </ThreeDoptionButtons>
+
+                        <VisibilityButton   
+                                        pending = {pending}
+                                        ThreeDVisibility = {ThreeDVisibility}
+                                        ThreeDReady  ={ThreeDReady} >
+                        </VisibilityButton>
+                    </div>
+
+                </div>
+              </div>    
+              <ThreeDview
+                              setModPointAmount = {setModPointAmount}
+                              setModRes = {setModRes}
+                              setMemUsed = {setMemUsed}
+                              modRes = {modRes}
+                              setTexture = {setTextureFile}
+                              setMessage = {setNewMessage}
+                              SetTopoMod = {SetTopoMod}
+                              ref={ThreeDRef} 
+                              coordinates={Coords} 
+                              NewMod = {newMod} 
+                              showNewModFunc = {showNewMod} 
+                              DownloadFunc = {DownloadThreeD} 
+                              Download3DVar = {download3D} 
+                              ShowThreeD = {ThreeDVisibility} 
+                              dimensionX = {widthDir} 
+                              dimensionY = {heightDir}
+                              apikey = {apikey}
+                              TopLeft = {TopLeft}
+                              BottomRight = {BottomRight}
+                              dims = {textureDims}   
+                              FitToScreen = {fitToScreen}
+                              ThreeDfitToScreen = {ThreeDfitToScreen}
+                              setThreeDReady  ={setThreeDReady}
+                              ModType = {ModType}
+                              ChangeModTypeFunc = {ChangeModTypeFunc}> 
+                  </ThreeDview>
+              </OrientationContext.Provider>
+          </VisibilityContext.Provider> 
+            
       </div>
       )
     

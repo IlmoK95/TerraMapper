@@ -1,17 +1,33 @@
 import '../index.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
+import { OrientationContext } from '../contexts/OrientationContext';
 
 
 const MessageBox =(props)=>{
 
+    const orientation = useContext(OrientationContext)
+
    const [showMessage, setShowMessage] = useState(false)
+
+   const MessageBoxStyle = {boxShadow: '5px 5px 2px 1px rgba(0, 0, 0, .2)', 
+                            position:'absolute', 
+                            borderStyle : 'solid', 
+                            borderColor : 'black', 
+                            borderWidth : '1px', top: 
+                            orientation==='horizontal'? '85%': '40%', 
+                            left:'50%',transform:'translate(-50%)',
+                            width: 'fit-content', zIndex: "300", 
+                            fontSize:'20px', backgroundColor : 'white', 
+                            borderRadius : '20px', 
+                            padding: '10px'
+                        }
 
    useEffect(()=>{
     if((props.message && props.pending===false)){
         setShowMessage(true)
         setTimeout(() => {
             setShowMessage(false)
-          }, 5000)
+          }, 3000)
     }else if (props.message && props.pending){
         setShowMessage(true)
     }else if (!props.ThreeDReady){
@@ -23,7 +39,7 @@ const MessageBox =(props)=>{
 
     return (
     <div style = {{ display : showMessage? 'block' : 'none'}}>
-        <div style = {props.layoutStyle} >     
+        <div style = {MessageBoxStyle} >     
                 <span>{props.message}</span>  
         </div>
     </div>
