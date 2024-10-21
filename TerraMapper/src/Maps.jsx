@@ -74,6 +74,7 @@ const Map = ( props ) => {
     const [pending, setPendingStatus] = useState(false)
     const [currentMax, setCurrentMax] = useState(limit.current)
     const [TopoMod, SetTopoMod] = useState(null)
+    const [TopoModNAme, SetTopoModName] = useState(null)
     const [TextureFile, setTextureFile] = useState(null)
     const [fitToScreen, SetFitToScreen] = useState(false)
     const [Orientation, setOrientation] = useState(window.innerWidth < window.innerHeight? 'vertical' : 'horizontal')
@@ -186,7 +187,7 @@ const Map = ( props ) => {
         if (!map.current) {
 
           platform.current = new H.service.Platform({ apikey });
-          setMessages([`Welcome to use Terra Mapper 🌎`])
+          setMessages([`Welcome to use \n Terra Mapper 🌎`]) 
 
           const engineType = H.Map.EngineType['WEBGL']
 
@@ -363,6 +364,7 @@ function APICall (start, end, APIcallNmb, call, lat, lng, pointAmount){
                showNewMod()
                setNewMessage([`✅ Data loaded.`])
                setNewMessage([`Creating 3D...`])
+
      
             }
             else {             
@@ -417,11 +419,11 @@ const createResizableRect=()=> {
       rectOutline.draggable = true;
 
       var  currentGeoRect = rect.getGeometry().getBoundingBox();
-      var objectTopLeftScreen = map.current.geoToScreen(currentGeoRect.getTopLeft());
-      var objectBottomRightScreen = map.current.geoToScreen(currentGeoRect.getBottomRight());
+      var objectTopLeft= currentGeoRect.getTopLeft()
+      var objectBottomRight = currentGeoRect.getBottomRight()
 
-      TopLeftCorner.current = objectTopLeftScreen
-      BottomRightCorner.current = objectBottomRightScreen
+      TopLeftCorner.current = objectTopLeft
+      BottomRightCorner.current = objectBottomRight
       CalcMaxPointAmount()
       setToMaxRes()
       CalcPointAmount(false)
@@ -753,11 +755,11 @@ const createResizableRect=()=> {
           event.stopPropagation();
         }
         var currentGeoRect = rect.getGeometry().getBoundingBox();
-        var objectTopLeftScreen = map.current.geoToScreen(currentGeoRect.getTopLeft());
-        var objectBottomRightScreen = map.current.geoToScreen(currentGeoRect.getBottomRight());
+        var objectTopLeft = currentGeoRect.getTopLeft()
+        var objectBottomRight = currentGeoRect.getBottomRight();
 
-        TopLeftCorner.current = objectTopLeftScreen
-        BottomRightCorner.current = objectBottomRightScreen
+        TopLeftCorner.current = objectTopLeft
+        BottomRightCorner.current = objectBottomRight
         CalcMaxPointAmount()
         setToMaxRes()
         CalcPointAmount(true)
@@ -770,11 +772,11 @@ const createResizableRect=()=> {
         behaviorRef.current.enable();
         behaviorRef.current.disable(H.mapevents.Behavior.Feature.TILT | H.mapevents.Behavior.Feature.HEADING)
         var  currentGeoRect = rect.getGeometry().getBoundingBox();
-        var objectTopLeftScreen = map.current.geoToScreen(currentGeoRect.getTopLeft());
-        var objectBottomRightScreen = map.current.geoToScreen(currentGeoRect.getBottomRight());
+        var objectTopLeft = currentGeoRect.getTopLeft();
+        var objectBottomRight = currentGeoRect.getBottomRight();
 
-        TopLeftCorner.current = objectTopLeftScreen
-        BottomRightCorner.current = objectBottomRightScreen
+        TopLeftCorner.current = objectTopLeft
+        BottomRightCorner.current = objectBottomRight
         CalcMaxPointAmount()
         setToMaxRes()
         CalcPointAmount(true)
@@ -827,7 +829,7 @@ const reformat1 =(coord)=>{
   const reformatPos=( pos, posName )=>{
 
       let multiPlier = /S|W/.test(pos) ? -1 : 1
-      let posChunks = pos.split(/[°′″NSEW]/)
+      let posChunks = pos.split(/[°′″'"NSEW]/)
 
       
       posChunks = posChunks.filter(n => n!== '')
@@ -869,7 +871,7 @@ const reformat1 =(coord)=>{
 const sortInput =(searchTarget = searchFieldVal)=> {
 
   //40°26′46″N 079°58′56″W
-  const regex1 = { exp : /^[0-9]{1,2}(°)[1-9]{1,2}(′)[1-9]{0,2}(″N|″S)(\s)[0-9]{1,3}(°)[0-9]{1,3}(′)[0-9]{1,2}(″E|″W)/dgi,
+  const regex1 = { exp : /^[0-9]{1,2}(°)[0-9]{1,2}(\s′|\s'|'|′)[0-9]{0,2}(\s″N|\s″S|\s"N|\s"S|″N|″S|"N|"S)(\s)[0-9]{1,3}(°)[0-9]{1,3}(′|')[0-9]{1,2}(″E|″W|"E|"W|\s″E|\s″W|\s"E|\s"W)/dgi,
     func : reformat1
   }
     
@@ -996,13 +998,13 @@ const DirectDistance=(coord_1, coord_2)=>{
 
   const CalcMaxPointAmount=()=>{
 
-    rectHeight.current = BottomRightCorner.current.y - TopLeftCorner.current.y 
-    rectWidth.current = BottomRightCorner.current.x - TopLeftCorner.current.x
+    console.log(BottomRightCorner)
 
-    
+    rectHeight.current = map.current.geoToScreen(BottomRightCorner.current).y - map.current.geoToScreen(TopLeftCorner.current).y
+    rectWidth.current = map.current.geoToScreen(BottomRightCorner.current).x - map.current.geoToScreen(TopLeftCorner.current).x
 
-    let BottomRightCoord = map.current.screenToGeo(BottomRightCorner.current.x , BottomRightCorner.current.y)
-    let TopLeftCoord = map.current.screenToGeo(TopLeftCorner.current.x , TopLeftCorner.current.y )
+    let BottomRightCoord = BottomRightCorner.current
+    let TopLeftCoord = TopLeftCorner.current
 
     let h =  DirectDistance(BottomRightCoord.lat, TopLeftCoord.lat)
     let w =  h * (rectWidth.current / rectHeight.current)
@@ -1032,12 +1034,12 @@ const DirectDistance=(coord_1, coord_2)=>{
     let Y_limit = h / rezNew
     let X_limit = w / rezNew
 
-    let y_start = TopLeftCorner.current.y 
-    let y_max = BottomRightCorner.current.y
+    let y_start = map.current.geoToScreen(TopLeftCorner.current).y
+    let y_max = map.current.geoToScreen(BottomRightCorner.current).y
     let y_step = rectHeight.current / Y_limit
 
-    let x_start = TopLeftCorner.current.x
-    let x_max =  BottomRightCorner.current.x
+    let x_start = map.current.geoToScreen(TopLeftCorner.current).x
+    let x_max =  map.current.geoToScreen(BottomRightCorner.current).x
     let x_step = rectWidth.current / X_limit
 
     let columnRange = Math.abs(x_max - x_start)
@@ -1057,11 +1059,14 @@ const DirectDistance=(coord_1, coord_2)=>{
 
   const CalcPointAmount =()=>{
 
-    rectHeight.current = BottomRightCorner.current.y - TopLeftCorner.current.y 
-    rectWidth.current = BottomRightCorner.current.x - TopLeftCorner.current.x
+    let BottomRightCornerScreen = map.current.geoToScreen( BottomRightCorner.current )
+    let TopLeftCornerScreen = map.current.geoToScreen( TopLeftCorner.current )
 
-    let BottomRightCoord = map.current.screenToGeo(BottomRightCorner.current.x , BottomRightCorner.current.y)
-    let TopLeftCoord = map.current.screenToGeo(TopLeftCorner.current.x , TopLeftCorner.current.y )
+    rectHeight.current = BottomRightCornerScreen.y - TopLeftCornerScreen.y 
+    rectWidth.current = BottomRightCornerScreen.x - TopLeftCornerScreen.x
+
+    let BottomRightCoord = BottomRightCorner.current
+    let TopLeftCoord = TopLeftCorner.current
 
 
     let h =  DirectDistance(BottomRightCoord.lat, TopLeftCoord.lat)
@@ -1071,13 +1076,13 @@ const DirectDistance=(coord_1, coord_2)=>{
     let X_limit = w / Resref.current
 
 
-    let y_start = TopLeftCorner.current.y 
-    let y_max = BottomRightCorner.current.y
+    let y_start = TopLeftCornerScreen.y 
+    let y_max = BottomRightCornerScreen.y
     let y_step = rectHeight.current / Y_limit
 
     
-    let x_start = TopLeftCorner.current.x
-    let x_max =  BottomRightCorner.current.x
+    let x_start = TopLeftCornerScreen.x
+    let x_max =  BottomRightCornerScreen.x
     let x_step = rectWidth.current / X_limit
 
     let columns = Math.ceil(Math.abs(x_max - x_start) / x_step) + 1
@@ -1092,13 +1097,13 @@ const DirectDistance=(coord_1, coord_2)=>{
       setNewMessage([`❌ Invalid point amount: ${pointAmount}`])
     }
 
-    getDistances(TopLeftCorner.current, BottomRightCorner.current)
+    getDistances(TopLeftCornerScreen, BottomRightCornerScreen)
 
-    var Y_midPoint_1 =BottomRightCorner.current.y - (rectHeight.current / 2)
-    var X_midPoint_2 = BottomRightCorner.current.x - (rectWidth.current / 2)
+    var Y_midPoint_1 =BottomRightCornerScreen.y - (rectHeight.current / 2)
+    var X_midPoint_2 = BottomRightCornerScreen.x - (rectWidth.current / 2)
 
-    var Y_midPoint_2 = BottomRightCorner.current.y
-    var X_midPoint_1 = BottomRightCorner.current.x 
+    var Y_midPoint_2 = BottomRightCornerScreen.y
+    var X_midPoint_1 = BottomRightCornerScreen.x 
 
     bottomMid.current = map.current.screenToGeo(X_midPoint_2 ,Y_midPoint_2)
     rightMid.current = map.current.screenToGeo(X_midPoint_1 ,Y_midPoint_1)
@@ -1121,13 +1126,6 @@ const DirectDistance=(coord_1, coord_2)=>{
     return time
   }
 
-  /* const resizeInputField =()=>{
-
-    var inputWidth = document.getElementById('Options_Left').offsetWidth
-    setinputWidth(inputWidth)
-
-  }
- */
 
 
   const SetMeasurements=(h, w)=>{
@@ -1139,6 +1137,7 @@ const DirectDistance=(coord_1, coord_2)=>{
 
       setThreeDReady(false)
       setModRes(Resref.current)
+      setModType('detailed')
 
       while (coordinatesList.current.length > 0) {
         coordinatesList.current.pop();
@@ -1146,14 +1145,16 @@ const DirectDistance=(coord_1, coord_2)=>{
 
      let [y_start, y_max, y_step, x_start, x_max, x_step] = CalcPointAmount()
 
-     let BottomRightCoord = map.current.screenToGeo(BottomRightCorner.current.x , BottomRightCorner.current.y)
-     let TopLeftCoord = map.current.screenToGeo(TopLeftCorner.current.x , TopLeftCorner.current.y )
+     let BottomRightCoord = BottomRightCorner.current
+     let TopLeftCoord = TopLeftCorner.current
 
      SetTopLeft(TopLeftCoord)
      SetBottomRight(BottomRightCoord)
 
-     let texture_h = BottomRightCorner.current.y - TopLeftCorner.current.y 
-     let texture_w = BottomRightCorner.current.x - TopLeftCorner.current.x
+
+
+     let texture_h = map.current.geoToScreen(BottomRightCorner.current).y - map.current.geoToScreen(TopLeftCorner.current).y
+     let texture_w = map.current.geoToScreen(BottomRightCorner.current).x - map.current.geoToScreen(TopLeftCorner.current).x
 
      SetTexture_Size(texture_h, texture_w)
 
@@ -1347,10 +1348,8 @@ const setNewMessage=(message)=>{
   const updateResolution=()=>{
 
         var  currentGeoRect = recRef.current.getGeometry().getBoundingBox();
-        var objectTopLeftScreen = map.current.geoToScreen(currentGeoRect.getTopLeft());
-        var objectBottomRightScreen = map.current.geoToScreen(currentGeoRect.getBottomRight());
-        TopLeftCorner.current =  objectTopLeftScreen
-        BottomRightCorner.current = objectBottomRightScreen
+        TopLeftCorner.current =  currentGeoRect.getTopLeft()
+        BottomRightCorner.current = currentGeoRect.getBottomRight()
         CalcMaxPointAmount()
         CalcPointAmount(false)
  
@@ -1359,6 +1358,10 @@ const setNewMessage=(message)=>{
 
   const ThreeDVisibility = ()=>{
       setShow3D(!show3D)
+      if(!show3D){
+        setShowThreeDinfo(false)
+
+      }
      
   }
 
@@ -1468,6 +1471,7 @@ const setNewMessage=(message)=>{
                     </SetDataComp>
           
                 </div >
+                
 
                     <Search                  
                                searchFieldinput = {searchFieldinput}

@@ -19,7 +19,8 @@ const MessageBox =(props)=>{
                             width: 'fit-content', zIndex: "300", 
                             fontSize:'20px', backgroundColor : 'white', 
                             borderRadius : '20px', 
-                            padding: '10px'
+                            padding: '10px',
+                            whiteSpace: 'pre-wrap'
                         }
 
    useEffect(()=>{

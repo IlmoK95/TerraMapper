@@ -102,7 +102,12 @@ const ThreeD_view =(props)=>{
             let Y_vals_UV = []
 
             if(scene.current.children){
-                scene.current.remove(scene.current.children[3])
+                scene.current.children.forEach( child =>{
+                    
+                    if(child.isMesh) scene.current.remove(child)
+                    
+
+                })
             }
     
             props.coordinates.forEach(( coord )=>{
@@ -247,7 +252,7 @@ const ThreeD_view =(props)=>{
             scene.current.add(modelRef.current)
             props.SetTopoMod(scene.current)
             props.setThreeDReady(true)
-            props.setMessage( [`${textureMessage.current},✅ 3D model created`])
+            props.setMessage( [`${textureMessage.current},\n✅ 3D model created`])
 
     }
 

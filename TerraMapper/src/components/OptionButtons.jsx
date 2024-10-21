@@ -28,8 +28,8 @@ const OptionButtons =(props)=>{
     return (
         <div  style={{height: '100%', display:'flex', flexDirection:  Orientation==='horizontal' ? 'column' : 'row'  }} >
 
-                   <button  onClick={props.CreateModelOption} style={LeftOptionBigButtonStyle}><img style={{width:'100%', height:'70%', objectFit : 'contain'}} src={'../symbols/create_mod.png'}></img></button>
-                    <button  onClick={props.DownloadsOption} style={LeftOptionBigButtonStyle}><img style={{width:'100%', height:'70%', objectFit : 'contain'}} src={'../symbols/download.png'} ></img></button>
+                   <button  onClick={props.CreateModelOption} style={LeftOptionBigButtonStyle}><img style={{width:'100%', height:'40px', objectFit : 'contain'}} src={'../symbols/create_mod.png'}></img></button>
+                    <button  onClick={props.DownloadsOption} style={LeftOptionBigButtonStyle}><img style={{width:'100%', height:'40px', objectFit : 'contain'}} src={'../symbols/download.png'} ></img></button>
 
         </div>
     )

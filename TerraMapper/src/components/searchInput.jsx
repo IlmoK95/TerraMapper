@@ -46,6 +46,9 @@ const SearchInput =(props)=>{
                         fontSize:'20px',
                         paddingLeft: '1vw',
                         paddingRight: '1vw',
+                        borderWidth: '2px',
+                        borderStyle : 'solid',
+                        borderColor:'black',
                         borderRadius : ' 0px 22px 22px 0px',
                         boxShadow: '5px 5px 2px 1px rgba(0, 0, 0, .2)',
     
@@ -56,6 +59,9 @@ const SearchInput =(props)=>{
                    
                         height: '45px',
                         width: 'fit-content',
+                        borderWidth: '2px',
+                        borderStyle : 'solid',
+                        borderColor:'black',
                         fontSize:'20px',
                         paddingLeft: '1vw',
                         paddingRight: '1vw',
@@ -71,6 +77,9 @@ const SearchInput =(props)=>{
                         fontSize:'20px',
                         width: '120px',
                         borderRadius : ' 22px 22px 22px 22px',
+                        borderWidth: '2px',
+                        borderStyle : 'solid',
+                        borderColor:'black',
                         paddingRight : '10px',
                         paddingLeft : '10px',
                         boxShadow: '5px 5px 2px 1px rgba(0, 0, 0, .2)',
@@ -81,7 +90,9 @@ const SearchInput =(props)=>{
                          height:'40px',
                          width:'50vw',                 
                          fontSize:'15px',
+                         borderWidth: '2px',
                          borderStyle : 'solid',
+                         borderColor:'black',
                          boxShadow: '5px 5px 2px 1px rgba(0, 0, 0, .2)'
                         }
     const searchHidden = { 
@@ -89,6 +100,7 @@ const SearchInput =(props)=>{
                         display : visibility.searchVisible || visibility.show3D ? "none" :"block",
                         height:'fit-content',
                         width:'fit-content',
+                
                         margin:'10px',
                         left : '50%',
                         transform : 'translate(-50%)'
