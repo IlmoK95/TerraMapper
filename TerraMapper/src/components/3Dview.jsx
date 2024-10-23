@@ -27,7 +27,7 @@ const ThreeD_view =(props)=>{
 
     
 
-    const fov = 20
+    const fov =  10
 
  
     useEffect( ()=>{
@@ -80,6 +80,7 @@ const ThreeD_view =(props)=>{
         if(modelRef.current  && visibility.show3D){
 
             requestAnimationFrame( animate ); 
+            orbitControl.current.update()
 	        renderer.current.render( scene.current, camera.current );
         }
     }
@@ -282,19 +283,21 @@ const ThreeD_view =(props)=>{
         geom.computeBoundingSphere()
         var rad = geom.boundingSphere.radius
         var rad_fov = fov * Math.PI/180
-        var z = rad / Math.sin(rad_fov / 2)
+        var z = window.innerHeight > window.innerWidth ? (rad / Math.sin(rad_fov / 2)) * (window.innerHeight / window.innerWidth ) : rad / Math.sin(rad_fov / 2)
         camera.current.position.z = z
         camera.current.position.x = 0
         camera.current.position.y = 0
         camera.current.updateProjectionMatrix()
-        orbitControl.current = new OrbitControls(camera.current, renderer.current.domElement )  
+        orbitControl.current = new OrbitControls(camera.current, renderer.current.domElement ) 
+        orbitControl.current.enableDamping = true 
+        orbitControl.current.rotateSpeed = 0.8
      
     }
 
     const resize3DView=()=>{
 
         renderer.current.setSize(window.innerWidth, window.innerHeight );
-        camera.current.aspect = (window.innerWidth ) / (window.innerHeight )
+        camera.current.aspect = window.innerWidth  / window.innerHeight 
         camera.current.updateProjectionMatrix()
 
     }

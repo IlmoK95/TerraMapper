@@ -4,8 +4,7 @@ import React, { useEffect } from 'react';
 import Map from './Maps';
 
 
-const apikey = process.env.REACT_APP_HereMapsAPIkey
-
+const apikey = process.env.REACT_APP_Mode === 'production' ? process.env.REACT_APP_HereMapsAPIkeyProd : process.env.REACT_APP_HereMapsAPIkeyTest
 
 
 function App() {
@@ -14,10 +13,7 @@ function App() {
 
     if (process.env.REACT_APP_Mode === 'production'){
       console.clear()
-      /* window.console.log = () => {}
-      window.console.error = () => {}
-      window.console.warn = () => {} 
-      window.console.debug = () => {}  */
+
     }
   
   })
